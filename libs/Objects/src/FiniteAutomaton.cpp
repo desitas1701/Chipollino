@@ -423,7 +423,7 @@ FiniteAutomaton FiniteAutomaton::minimize(bool is_trim, iLogTemplate* log) const
 
 FiniteAutomaton FiniteAutomaton::minimize_h(bool is_trim, iLogTemplate* log) const {
 	// DEBUG: По умолчанию is_trim = true (Удаляем ловушки?)
-	is_trim = false;
+	is_trim = true;
 
 	if (!is_trim && log)
 		log->set_parameter("trap", " (с добавлением ловушки)");
@@ -578,14 +578,16 @@ FiniteAutomaton FiniteAutomaton::minimize_h(bool is_trim, iLogTemplate* log) con
 		groups[pi[i]].push_back(i);
 	}
 
-	// TODO: Выяснить, почему при удалении ловушек с классами эквивалентностей, полученных через этот код, картинку в выводе плющит
 	vector<int> classes(dfa.size());
-	int i = 0;
+	int i = 1;
 	for (const auto& [lawyer, clients] : groups) {
 		for (const auto& q: clients) {
 			classes[q] = i;
 		}
 		i++;
+		if (i == groups.size()) {
+			i = 0;
+		}
 	}
 
 	auto [minimized_dfa, class_to_index] = dfa.merge_classes(classes);
