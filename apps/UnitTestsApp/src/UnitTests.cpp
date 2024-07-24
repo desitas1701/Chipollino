@@ -11,6 +11,8 @@
 #include "Objects/TransformationMonoid.h"
 #include "Tester/Tester.h"
 
+#include <InputGenerator/TasksGenerator.h>
+
 using std::cout;
 using std::map;
 using std::set;
@@ -951,4 +953,48 @@ TEST(TestAmbiguity, AmbiguityValues) {
 			break;
 		}
 	});
+}
+
+TEST(TestMinimizeH, Antimirov) {
+	int count = 10000;
+	RegexGenerator rg;
+	for (int i = 0; i < count; i++) {
+		string reg_string = rg.generate_regex();
+		// cout << reg_string << '\n';
+		FiniteAutomaton fa = Regex(reg_string).to_antimirov();
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+	}
+}
+
+TEST(TestMinimizeH, Glushkov) {
+	int count = 10000;
+	RegexGenerator rg;
+	for (int i = 0; i < count; i++) {
+		string reg_string = rg.generate_regex();
+		// cout << reg_string << '\n';
+		FiniteAutomaton fa = Regex(reg_string).to_glushkov();
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+	}
+}
+
+TEST(TestMinimizeH, Ilieyu) {
+	int count = 10000;
+	RegexGenerator rg;
+	for (int i = 0; i < count; i++) {
+		string reg_string = rg.generate_regex();
+		// cout << reg_string << '\n';
+		FiniteAutomaton fa = Regex(reg_string).to_ilieyu();
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+	}
+}
+
+TEST(TestMinimizeH, Thomson) {
+	int count = 10000;
+	RegexGenerator rg;
+	for (int i = 0; i < count; i++) {
+		string reg_string = rg.generate_regex();
+		// cout << reg_string << '\n';
+		FiniteAutomaton fa = Regex(reg_string).to_thompson();
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+	}
 }
