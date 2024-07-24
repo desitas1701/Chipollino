@@ -35,6 +35,7 @@ inline static const std::vector<Function> functions = {
 	{"Linearize", {ObjectType::Regex}, ObjectType::Regex},
 	{"Minimize", {ObjectType::NFA}, ObjectType::DFA},
 	{"Minimize+", {ObjectType::NFA}, ObjectType::DFA},
+	{"MinimizeH", {ObjectType::NFA}, ObjectType::DFA},
 	{"Reverse", {ObjectType::NFA}, ObjectType::NFA},
 	{"Reverse", {ObjectType::BRefRegex}, ObjectType::BRefRegex},
 	{"Annote", {ObjectType::NFA}, ObjectType::DFA},

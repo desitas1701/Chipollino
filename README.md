@@ -168,6 +168,7 @@ TG.generate_task(3, 5, false, false);
 - `Minimize: NFA -> DFA` — минимизация без добавления состояния-ловушки
 - `Determinize+: NFA -> DFA` — детерминизация с добавлением состояния-ловушки
 - `Minimize+: NFA -> DFA` — минимизация с добавлением состояния-ловушки
+- `MinimizeH: NFA -> DFA` — минимизация Хопкрофта
 - `RemoveTrap: DFA -> DFA` - удаление состояний-ловушек
 - `Reverse: NFA -> NFA` — обращение ("переворачивает" автомат)
 - `Complement: DFA -> DFA` — дополнение

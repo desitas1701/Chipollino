@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <queue>
 #include <set>
 #include <sstream>
@@ -389,6 +390,210 @@ FiniteAutomaton FiniteAutomaton::minimize(bool is_trim, iLogTemplate* log) const
 	language->set_min_dfa(minimized_dfa);
 
 	// удаление ловушки по желанию пользователя
+	if (is_trim)
+		minimized_dfa = minimized_dfa.remove_trap_states();
+
+	stringstream ss;
+	for (const auto& state : minimized_dfa.states) {
+		ss << "\\{" << state.identifier << "\\};";
+	}
+	MetaInfo old_meta, new_meta;
+	for (int i = 0; i < dfa.size(); i++) {
+		for (int j = 0; j < dfa.size(); j++)
+			if (classes[i] == classes[j] && (i != j)) {
+				old_meta.upd(NodeMeta{dfa.states[i].index, classes[i]});
+				new_meta.upd(NodeMeta{class_to_index.at(classes[i]), classes[i]});
+				break;
+			}
+	}
+
+	if (log) {
+		if (!is_deterministic()) {
+			log->set_parameter("oldautomaton", *this);
+			log->set_parameter("to_determ", "Автомат после предварительной детерминизации: ");
+			log->set_parameter("detautomaton", dfa, old_meta);
+		} else {
+			log->set_parameter("oldautomaton", dfa, old_meta);
+		}
+		log->set_parameter("equivclasses", ss.str());
+		log->set_parameter("result", minimized_dfa, new_meta);
+	}
+	return minimized_dfa;
+}
+
+FiniteAutomaton FiniteAutomaton::minimize_h(bool is_trim, iLogTemplate* log) const {
+	// DEBUG: По умолчанию is_trim = true (Удаляем ловушки?)
+	is_trim = false;
+
+	if (!is_trim && log)
+		log->set_parameter("trap", " (с добавлением ловушки)");
+	if (language->is_min_dfa_cached()) {
+		FiniteAutomaton language_min_dfa = language->get_min_dfa();
+		// удаление ловушки по желанию пользователя
+		if (is_trim)
+			language_min_dfa = language_min_dfa.remove_trap_states();
+		if (log) {
+			log->set_parameter("oldautomaton", *this);
+			log->set_parameter("cach", "(!) минимальный автомат получен из кэша");
+			log->set_parameter("result", language_min_dfa);
+		}
+		return language_min_dfa;
+	}
+
+	// Детерминизация НКА
+	FiniteAutomaton dfa = determinize();
+
+	// Подготовка к минимизации
+	// 1. Создаём таблицу переходов и таблицу выходов
+	vector<vector<int>> transitions_table(dfa.size(), vector<int>(language->get_alphabet_size()));
+	vector<vector<bool>> outputs_table(dfa.size(), vector<bool>(language->get_alphabet_size()));
+	for (int i = 0; i < dfa.size(); i++) {
+		int j = 0;
+		for (const Symbol& symb : language->get_alphabet()) {
+			transitions_table[i][j] = *dfa.states[i].transitions.at(symb).begin();
+			outputs_table[i][j] = dfa.states[i].is_terminal;
+			j++;
+		}
+	}
+
+	// 2. Определяем нужные для минимизации функции и вспомогательные структуры данных
+	vector<int> dsu_parent(0);
+	vector<int> dsu_depth(0);
+
+	auto make_dsu = [&](int n) -> void {
+		dsu_parent.resize(n);
+		for (int i = 0; i < n; i++) {
+			dsu_parent[i] = i;
+		}
+		dsu_depth.resize(n, 0);
+	};
+
+	std::function<int(int)> dsu_find = [&](int x) -> int {
+		if (dsu_parent[x] == x) {
+			return x;
+		}
+		else {
+			dsu_parent[x] = dsu_find(dsu_parent[x]);
+			return dsu_parent[x];
+		}
+	};
+
+	auto dsu_union = [&](int x, int y) -> void {
+		int rootX = dsu_find(x);
+		int rootY = dsu_find(y);
+		if (dsu_depth[rootX] < dsu_depth[rootY]) {
+			dsu_parent[rootX] = rootY;
+		} else {
+			dsu_parent[rootY] = rootX;
+			if (dsu_depth[rootX] == dsu_depth[rootY] && rootX != rootY) {
+				dsu_depth[rootX]++;
+			}
+		}
+	};
+
+	auto is_machine_contains_q = [&](const vector<FAState>& machine, int q) -> bool {
+		for (FAState s : machine) {
+			if (s.index == q) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	auto Split1 = [&](const vector<FAState>& machine, int& m, vector<int>& pi) {
+		pi.resize(machine.size());
+		m = machine.size();
+		make_dsu(m);
+		for (int i = 0; i < machine.size(); i++) {
+			for (int j = 0; j < machine.size(); j++) {
+				if (dsu_find(i) != dsu_find(j)) {
+					bool eq = true;
+					for (int k = 0; k < language->get_alphabet_size(); k++) {
+						if (outputs_table[i][k] != outputs_table[j][k]) {
+							eq = false;
+							break;
+						}
+					}
+					if (eq) {
+						dsu_union(i, j);
+						m--;
+					}
+				}
+			}
+		}
+		for (int i = 0; i < machine.size(); i++) {
+			pi[i] = dsu_find(i);
+		}
+	};
+
+	auto Split = [&](const vector<FAState>& machine, int& m, vector<int>& pi) {
+		m = machine.size();
+		make_dsu(m);
+		for (int i = 0; i < machine.size(); i++) {
+			for (int j = 0; j < machine.size(); j++) {
+				if (pi[i] == pi[j] && dsu_find(i) != dsu_find(j)) {
+					bool eq = true;
+					for (int k = 0; k < language->get_alphabet_size(); k++) {
+						int w1 = transitions_table[i][k];
+						int w2 = transitions_table[j][k];
+						if (pi[w1] != pi[w2]) {
+							eq = false;
+							break;
+						}
+					}
+					if (eq) {
+						dsu_union(i, j);
+						m--;
+					}
+				}
+			}
+		}
+		for (int i = 0; i < machine.size(); i++) {
+			pi[i] = dsu_find(i);
+		}
+	};
+
+	auto AufenkampHohn = [&]() -> vector<int> {
+		vector<int> pi(0);
+		int m1 = 0;
+
+		Split1(dfa.states, m1, pi);
+
+		while (true) {
+			int m2 = 0;
+			Split(dfa.states, m2, pi);
+			if (m1 == m2) {
+				break;
+			}
+			m1 = m2;
+		}
+
+		return pi;
+	};
+
+	// Минимизация ДКА
+	vector<int> pi = AufenkampHohn();
+	map<int, vector<int>> groups;
+	for (int i = 0; i < pi.size(); i++) {
+		groups[pi[i]].push_back(i);
+	}
+
+	// TODO: Выяснить, почему при удалении ловушек с классами эквивалентностей, полученных через этот код, картинку в выводе плющит
+	vector<int> classes(dfa.size());
+	int i = 0;
+	for (const auto& [lawyer, clients] : groups) {
+		for (const auto& q: clients) {
+			classes[q] = i;
+		}
+		i++;
+	}
+
+	auto [minimized_dfa, class_to_index] = dfa.merge_classes(classes);
+
+	// Кэширование
+	language->set_min_dfa(minimized_dfa);
+
+	// Удаление ловушки по желанию пользователя
 	if (is_trim)
 		minimized_dfa = minimized_dfa.remove_trap_states();
 
