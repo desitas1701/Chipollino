@@ -422,9 +422,6 @@ FiniteAutomaton FiniteAutomaton::minimize(bool is_trim, iLogTemplate* log) const
 }
 
 FiniteAutomaton FiniteAutomaton::minimize_h(bool is_trim, iLogTemplate* log) const {
-	// DEBUG: По умолчанию is_trim = true (Удаляем ловушки?)
-	is_trim = true;
-
 	if (!is_trim && log)
 		log->set_parameter("trap", " (с добавлением ловушки)");
 	if (language->is_min_dfa_cached()) {
