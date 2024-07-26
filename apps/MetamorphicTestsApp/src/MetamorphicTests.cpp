@@ -225,47 +225,50 @@ TEST(TestMFA, MergeBisimilar) {
 	}
 }
 
-
 TEST(TestMinimizeH, Antimirov) {
 	int count = 10000;
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
 	RegexGenerator rg;
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
-		// cout << reg_string << '\n';
 		FiniteAutomaton fa = Regex(reg_string).to_antimirov();
-		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(is_trim), fa.minimize_h(is_trim)));
 	}
 }
 
 TEST(TestMinimizeH, Glushkov) {
 	int count = 10000;
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
 	RegexGenerator rg;
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
-		// cout << reg_string << '\n';
 		FiniteAutomaton fa = Regex(reg_string).to_glushkov();
-		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(is_trim), fa.minimize_h(is_trim)));
 	}
 }
 
 TEST(TestMinimizeH, Ilieyu) {
 	int count = 10000;
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
 	RegexGenerator rg;
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
-		// cout << reg_string << '\n';
 		FiniteAutomaton fa = Regex(reg_string).to_ilieyu();
-		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(is_trim), fa.minimize_h(is_trim)));
 	}
 }
 
 TEST(TestMinimizeH, Thomson) {
 	int count = 10000;
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
 	RegexGenerator rg;
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
-		// cout << reg_string << '\n';
 		FiniteAutomaton fa = Regex(reg_string).to_thompson();
-		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(), fa.minimize_h()));
+		ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize(is_trim), fa.minimize_h(is_trim)));
 	}
 }
