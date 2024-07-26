@@ -954,3 +954,216 @@ TEST(TestAmbiguity, AmbiguityValues) {
 		}
 	});
 }
+
+TEST(TestMinimizeH, EmptyFAWithTrap) {
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
+	// Definition FA
+	vector<FAState> states;
+	states.emplace_back(0, set<int>(), "", false, FAState::Transitions());
+
+	states[0].add_transition(0, "a");
+	states[0].add_transition(0, "b");
+	states[0].add_transition(0, "c");
+
+	FiniteAutomaton fa(0, states, {"a", "b", "c"});
+
+	// Check
+	ASSERT_TRUE(FiniteAutomaton::equal(fa.minimize_h(is_trim), fa));
+}
+
+TEST(TestMinimizeH, FAWithoutTrap) {
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
+	// Definition FA1
+	vector<FAState> states;
+	for (int i = 0; i < 8; i++) {
+		states.emplace_back(i, set<int>({i}), std::to_string(i), false, FAState::Transitions());
+	}
+
+	states[0].add_transition(7, "a");
+	states[0].add_transition(1, "b");
+	states[1].add_transition(0, "b");
+	states[1].add_transition(7, "a");
+	states[2].add_transition(4, "a");
+	states[2].add_transition(5, "b");
+	states[3].add_transition(4, "a");
+	states[3].add_transition(5, "b");
+	states[4].add_transition(5, "a");
+	states[4].add_transition(6, "b");
+	states[5].add_transition(5, "a");
+	states[5].add_transition(5, "b");
+	states[6].add_transition(6, "a");
+	states[6].add_transition(5, "b");
+	states[7].add_transition(2, "a");
+	states[7].add_transition(2, "b");
+
+	states[5].is_terminal = true;
+	states[6].is_terminal = true;
+
+	FiniteAutomaton fa1(0, states, {"a", "b"});
+
+	// Definition FA2
+	states.clear();
+	for (int i = 0; i < 5; i++) {
+		states.emplace_back(i, set<int>({i}), std::to_string(i), false, FAState::Transitions());
+	}
+
+	states[0].add_transition(1, "a");
+	states[0].add_transition(0, "b");
+	states[1].add_transition(2, "b");
+	states[1].add_transition(2, "a");
+	states[2].add_transition(3, "a");
+	states[2].add_transition(4, "b");
+	states[3].add_transition(4, "a");
+	states[3].add_transition(4, "b");
+	states[4].add_transition(4, "a");
+	states[4].add_transition(4, "b");
+
+	states[4].is_terminal = true;
+
+	FiniteAutomaton fa2(0, states, {"a", "b"});
+
+	// Check
+	ASSERT_TRUE(FiniteAutomaton::equal(fa1.minimize_h(is_trim), fa2));
+}
+
+TEST(TestMinimizeH, FAWithTrap) {
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
+	// Definition FA1
+	vector<FAState> states;
+	for (int i = 0; i < 6; i++) {
+		states.emplace_back(i, set<int>({i}), std::to_string(i), false, FAState::Transitions());
+	}
+	states.emplace_back(6, set<int>(), "", false, FAState::Transitions());
+
+	states[0].add_transition(1, "a");
+	states[0].add_transition(2, "b");
+	states[0].add_transition(6, "c");
+
+	states[1].add_transition(3, "a");
+	states[1].add_transition(6, "b");
+	states[1].add_transition(6, "c");
+
+	states[2].add_transition(4, "a");
+	states[2].add_transition(6, "b");
+	states[2].add_transition(6, "c");
+
+	states[3].add_transition(5, "a");
+	states[3].add_transition(6, "b");
+	states[3].add_transition(6, "c");
+
+	states[4].add_transition(5, "a");
+	states[4].add_transition(6, "b");
+	states[4].add_transition(6, "c");
+
+	states[5].add_transition(5, "a");
+	states[5].add_transition(5, "b");
+	states[5].add_transition(5, "c");
+
+	states[6].add_transition(6, "a");
+	states[6].add_transition(6, "b");
+	states[6].add_transition(6, "c");
+
+	states[5].is_terminal = true;
+
+	FiniteAutomaton fa1(0, states, {"a", "b", "c"});
+
+	// Definition FA2
+	states.clear();
+	for (int i = 0; i < 4; i++) {
+		states.emplace_back(i, set<int>({i}), std::to_string(i), false, FAState::Transitions());
+	}
+	states.emplace_back(4, set<int>(), "", false, FAState::Transitions());
+
+	states[0].add_transition(1, "a");
+	states[0].add_transition(1, "b");
+	states[0].add_transition(4, "c");
+
+	states[1].add_transition(2, "a");
+	states[1].add_transition(4, "b");
+	states[1].add_transition(4, "c");
+
+	states[2].add_transition(3, "a");
+	states[2].add_transition(4, "b");
+	states[2].add_transition(4, "c");
+
+	states[3].add_transition(3, "a");
+	states[3].add_transition(3, "b");
+	states[3].add_transition(3, "c");
+
+	states[4].add_transition(4, "a");
+	states[4].add_transition(4, "b");
+	states[4].add_transition(4, "c");
+
+	states[3].is_terminal = true;
+
+	FiniteAutomaton fa2(0, states, {"a", "b", "c"});
+
+	// Check
+	ASSERT_TRUE(FiniteAutomaton::equal(fa1.minimize_h(is_trim), is_trim ? fa2.remove_trap_states() : fa2));
+}
+
+TEST(TestMinimizeH, FAWithoutTransitions) {
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
+	// Definition FA1
+	vector<FAState> states;
+	for (int i = 0; i < 8; i++) {
+		states.emplace_back(i, set<int>({i}), std::to_string(i), false, FAState::Transitions());
+	}
+	states.emplace_back(8, set<int>(), "", false, FAState::Transitions());
+
+	states[7].add_transition(7, "a");
+	states[7].add_transition(7, "b");
+	states[7].add_transition(7, "c");
+
+	states[8].add_transition(8, "a");
+	states[8].add_transition(8, "b");
+	states[8].add_transition(8, "c");
+
+	states[7].is_terminal = true;
+
+	FiniteAutomaton fa1(0, states, {"a", "b", "c"});
+
+	// Definition FA2
+	states.clear();
+	states.emplace_back(0, set<int>({0}), std::to_string(0), false, FAState::Transitions());
+
+	states[0].add_transition(0, "a");
+	states[0].add_transition(0, "b");
+	states[0].add_transition(0, "c");
+
+	FiniteAutomaton fa2(0, states, {"a", "b", "c"});
+
+	// Check
+	ASSERT_TRUE(FiniteAutomaton::equal(fa1.minimize_h(is_trim), fa2));
+}
+
+TEST(TestMinimizeH, FAWhereAllStatesCollapseInOne) {
+	bool is_trim = true;  // Minimize = true, Minimize+ = false
+
+	// Definition FA1
+	FiniteAutomaton fa1 = Regex("(a|b|c|d|e|f|g|h)*").to_thompson().remove_eps();
+
+	// Definition FA2
+	vector<FAState> states;
+	states.emplace_back(0, set<int>({0}), std::to_string(0), false, FAState::Transitions());
+
+	states[0].add_transition(0, "a");
+	states[0].add_transition(0, "b");
+	states[0].add_transition(0, "c");
+	states[0].add_transition(0, "d");
+	states[0].add_transition(0, "e");
+	states[0].add_transition(0, "f");
+	states[0].add_transition(0, "g");
+	states[0].add_transition(0, "h");
+
+	states[0].is_terminal = true;
+
+	FiniteAutomaton fa2(0, states, {"a", "b", "c", "d", "e", "f", "g", "h"});
+
+	// Check
+	ASSERT_TRUE(FiniteAutomaton::equal(fa1.minimize_h(is_trim), fa2));
+}
