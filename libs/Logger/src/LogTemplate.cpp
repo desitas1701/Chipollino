@@ -212,9 +212,9 @@ string LogTemplate::log_plot(Plot p) {
 		"\\datavisualization[scientific axes=clean, visualize as line/.list={" +
 		styling +
 		"},\n x axis={ticks={step=" + to_string(step_size(max_x, styles.size(), p.data.size())) +
-		"}, label=" + decorate_element("длина слова", italic, footnote, false) +
+		"}, label=" + decorate_element(p.x_title, italic, footnote, false) +
 		"}, y axis={ticks={step=" + to_string(step_size(max_y, styles.size(), p.data.size())) +
-		"}, label=" + decorate_element("шаги", italic, footnote, false) + "},\n" + legenda +
+		"}, label=" + decorate_element(p.y_title, italic, footnote, false) + "},\n" + legenda +
 		"style sheet = vary hue, style sheet = vary dashing]\n "
 		"data[headline={x, y, set}] {\n";
 	for (auto& i : p.data) {

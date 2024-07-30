@@ -25,6 +25,8 @@ class iLogTemplate {
 	};
 
 	struct Plot {
+		std::string x_title;		// Подпись оси X
+		std::string y_title;		// Подпись оси Y
 		std::vector<Point> data;
 	};
 

@@ -85,6 +85,8 @@ void Tester::test(const ParseDevice& lang, const Regex& regex, int step, iLogTem
 			plot.data.push_back({labels[type], words[i], steps[i]});
 		}
 	}
+	plot.x_title = "Длина слова";
+	plot.y_title = "Шаги";
 	t.columns.emplace_back("Шаги");
 	t.columns.emplace_back("Длина строки");
 	t.columns.emplace_back("Время парсинга");
