@@ -21,13 +21,16 @@
 
 using std::cerr;
 using std::cout;
+using std::make_pair;
 using std::make_shared;
 using std::map;
 using std::pair;
+using std::queue;
 using std::set;
 using std::stack;
 using std::string;
 using std::stringstream;
+using std::swap;
 using std::to_string;
 using std::tuple;
 using std::unordered_map;
@@ -440,153 +443,76 @@ FiniteAutomaton FiniteAutomaton::minimize_h(bool is_trim, iLogTemplate* log) con
 	// Детерминизация НКА
 	FiniteAutomaton dfa = determinize();
 
-	// Подготовка к минимизации
-	// 1. Создаём таблицу переходов и таблицу выходов
-	vector<vector<int>> transitions_table(dfa.size(), vector<int>(language->get_alphabet_size()));
-	vector<vector<bool>> outputs_table(dfa.size(), vector<bool>(language->get_alphabet_size()));
-	for (int i = 0; i < dfa.size(); i++) {
-		int j = 0;
-		for (const Symbol& symb : language->get_alphabet()) {
-			transitions_table[i][j] = *dfa.states[i].transitions.at(symb).begin();
-			outputs_table[i][j] = dfa.states[i].is_terminal;
-			j++;
+	// Определение функции минимизации
+	auto MinimizationHopcroft = [&]() -> vector<int> {
+		// Подготовка вспомогательных структур данных
+		vector<int> Class(dfa.size());
+		for (int i = 0; i < dfa.size(); i++) {
+			Class[i] = dfa.states[i].is_terminal ? 0 : 1;
 		}
-	}
 
-	// 2. Определяем нужные для минимизации функции и вспомогательные структуры данных
-	vector<int> dsu_parent(0);
-	vector<int> dsu_depth(0);
+		queue<pair<int, int>> Queue;
 
-	auto make_dsu = [&](int n) -> void {
-		dsu_parent.resize(n);
-		for (int i = 0; i < n; i++) {
-			dsu_parent[i] = i;
-		}
-		dsu_depth.resize(n, 0);
-	};
-
-	std::function<int(int)> dsu_find = [&](int x) -> int {
-		if (dsu_parent[x] == x) {
-			return x;
-		}
-		else {
-			dsu_parent[x] = dsu_find(dsu_parent[x]);
-			return dsu_parent[x];
-		}
-	};
-
-	auto dsu_union = [&](int x, int y) -> void {
-		int rootX = dsu_find(x);
-		int rootY = dsu_find(y);
-		if (dsu_depth[rootX] < dsu_depth[rootY]) {
-			dsu_parent[rootX] = rootY;
-		} else {
-			dsu_parent[rootY] = rootX;
-			if (dsu_depth[rootX] == dsu_depth[rootY] && rootX != rootY) {
-				dsu_depth[rootX]++;
+		vector<vector<vector<int>>> Inv(dfa.size(), vector<vector<int>>(language->get_alphabet_size(), vector<int>()));
+		for (int q = 0; q < dfa.size(); q++) {
+			int a = 0;
+			for (const Symbol& symb : language->get_alphabet()) {
+				int r = *dfa.states[q].transitions.at(symb).begin();
+				Inv[r][a].push_back(q);
+				a++;
 			}
 		}
-	};
 
-	auto is_machine_contains_q = [&](const vector<FAState>& machine, int q) -> bool {
-		for (FAState s : machine) {
-			if (s.index == q) {
-				return true;
-			}
+		map<int, vector<int>> Involved;
+
+		// Начало работы алгоритма
+		vector<unordered_set<int>> P(2);							// |
+		for (int i = 0; i < dfa.size(); i++) {						// |--- P <- {F, Q \ F}
+			P[dfa.states[i].is_terminal ? 0 : 1].insert(i);			// |
+		}															// |
+		for (int c = 0; c < language->get_alphabet_size(); c++) {
+			Queue.push(make_pair(0, c));
+			Queue.push(make_pair(1, c));
 		}
-		return false;
-	};
-
-	auto Split1 = [&](const vector<FAState>& machine, int& m, vector<int>& pi) {
-		pi.resize(machine.size());
-		m = machine.size();
-		make_dsu(m);
-		for (int i = 0; i < machine.size(); i++) {
-			for (int j = 0; j < machine.size(); j++) {
-				if (dsu_find(i) != dsu_find(j)) {
-					bool eq = true;
-					for (int k = 0; k < language->get_alphabet_size(); k++) {
-						if (outputs_table[i][k] != outputs_table[j][k]) {
-							eq = false;
-							break;
-						}
+		while (!Queue.empty()) {
+			auto [C, a] = Queue.front();
+			Queue.pop();
+			Involved = {};
+			for (int q : P[C]) {
+				for (int r : Inv[q][a]) {
+					int i = Class[r];
+					if (Involved.find(i) == Involved.end()) {
+						Involved[i] = {};
 					}
-					if (eq) {
-						dsu_union(i, j);
-						m--;
+					Involved[i].push_back(r);
+				}
+			}
+			for (const auto& pair : Involved) {
+				int i = pair.first;
+				if (Involved[i].size() < P[i].size()) {
+					P.push_back({});
+					int j = P.size() - 1;
+					for (int r : Involved[i]) {
+						P[i].erase(r);
+						P[j].insert(r);
+					}
+					if (P[j].size() > P[i].size()) {
+						swap(P[i], P[j]);
+					}
+					for (int r : P[j]) {
+						Class[r] = j;
+					}
+					for (int c = 0; c < language->get_alphabet_size(); c++) {
+						Queue.push(make_pair(j, c));
 					}
 				}
 			}
 		}
-		for (int i = 0; i < machine.size(); i++) {
-			pi[i] = dsu_find(i);
-		}
+		return Class;
 	};
 
-	auto Split = [&](const vector<FAState>& machine, int& m, vector<int>& pi) {
-		m = machine.size();
-		make_dsu(m);
-		for (int i = 0; i < machine.size(); i++) {
-			for (int j = 0; j < machine.size(); j++) {
-				if (pi[i] == pi[j] && dsu_find(i) != dsu_find(j)) {
-					bool eq = true;
-					for (int k = 0; k < language->get_alphabet_size(); k++) {
-						int w1 = transitions_table[i][k];
-						int w2 = transitions_table[j][k];
-						if (pi[w1] != pi[w2]) {
-							eq = false;
-							break;
-						}
-					}
-					if (eq) {
-						dsu_union(i, j);
-						m--;
-					}
-				}
-			}
-		}
-		for (int i = 0; i < machine.size(); i++) {
-			pi[i] = dsu_find(i);
-		}
-	};
-
-	auto AufenkampHohn = [&]() -> vector<int> {
-		vector<int> pi(0);
-		int m1 = 0;
-
-		Split1(dfa.states, m1, pi);
-
-		while (true) {
-			int m2 = 0;
-			Split(dfa.states, m2, pi);
-			if (m1 == m2) {
-				break;
-			}
-			m1 = m2;
-		}
-
-		return pi;
-	};
-
-	// Минимизация ДКА
-	vector<int> pi = AufenkampHohn();
-	map<int, vector<int>> groups;
-	for (int i = 0; i < pi.size(); i++) {
-		groups[pi[i]].push_back(i);
-	}
-
-	vector<int> classes(dfa.size());
-	int i = 1;
-	for (const auto& [lawyer, clients] : groups) {
-		for (const auto& q: clients) {
-			classes[q] = i;
-		}
-		i++;
-		if (i == groups.size()) {
-			i = 0;
-		}
-	}
-
+	// Минимизация
+	vector<int> classes = MinimizationHopcroft();
 	auto [minimized_dfa, class_to_index] = dfa.merge_classes(classes);
 
 	// Кэширование
