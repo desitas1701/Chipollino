@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cmath>
-#include <functional>
 #include <queue>
 #include <set>
 #include <sstream>
