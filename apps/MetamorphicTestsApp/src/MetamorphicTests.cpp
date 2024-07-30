@@ -226,10 +226,12 @@ TEST(TestMFA, MergeBisimilar) {
 }
 
 TEST(TestMinimizeH, Antimirov) {
+	// Testing parameters
 	int count = 10000;
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
-
 	RegexGenerator rg;
+
+	// Check
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
 		FiniteAutomaton fa = Regex(reg_string).to_antimirov();
@@ -238,10 +240,12 @@ TEST(TestMinimizeH, Antimirov) {
 }
 
 TEST(TestMinimizeH, Glushkov) {
+	// Testing parameters
 	int count = 10000;
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
-
 	RegexGenerator rg;
+
+	// Check
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
 		FiniteAutomaton fa = Regex(reg_string).to_glushkov();
@@ -250,10 +254,12 @@ TEST(TestMinimizeH, Glushkov) {
 }
 
 TEST(TestMinimizeH, Ilieyu) {
+	// Testing parameters
 	int count = 10000;
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
-
 	RegexGenerator rg;
+
+	// Check
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
 		FiniteAutomaton fa = Regex(reg_string).to_ilieyu();
@@ -262,10 +268,12 @@ TEST(TestMinimizeH, Ilieyu) {
 }
 
 TEST(TestMinimizeH, Thomson) {
+	// Testing parameters
 	int count = 10000;
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
-
 	RegexGenerator rg;
+
+	// Check
 	for (int i = 0; i < count; i++) {
 		string reg_string = rg.generate_regex();
 		FiniteAutomaton fa = Regex(reg_string).to_thompson();
