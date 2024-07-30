@@ -11,8 +11,6 @@
 #include "Objects/TransformationMonoid.h"
 #include "Tester/Tester.h"
 
-#include <InputGenerator/TasksGenerator.h>
-
 using std::cout;
 using std::map;
 using std::set;
@@ -956,6 +954,7 @@ TEST(TestAmbiguity, AmbiguityValues) {
 }
 
 TEST(TestMinimizeH, EmptyFAWithTrap) {
+	// Testing parameters
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
 
 	// Definition FA
@@ -973,6 +972,7 @@ TEST(TestMinimizeH, EmptyFAWithTrap) {
 }
 
 TEST(TestMinimizeH, FAWithoutTrap) {
+	// Testing parameters
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
 
 	// Definition FA1
@@ -1029,6 +1029,7 @@ TEST(TestMinimizeH, FAWithoutTrap) {
 }
 
 TEST(TestMinimizeH, FAWithTrap) {
+	// Testing parameters
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
 
 	// Definition FA1
@@ -1106,6 +1107,7 @@ TEST(TestMinimizeH, FAWithTrap) {
 }
 
 TEST(TestMinimizeH, FAWithoutTransitions) {
+	// Testing parameters
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
 
 	// Definition FA1
@@ -1142,6 +1144,7 @@ TEST(TestMinimizeH, FAWithoutTransitions) {
 }
 
 TEST(TestMinimizeH, FAWhereAllStatesCollapseInOne) {
+	// Testing parameters
 	bool is_trim = true;  // Minimize = true, Minimize+ = false
 
 	// Definition FA1
