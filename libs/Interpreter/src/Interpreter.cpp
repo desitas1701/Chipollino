@@ -1,7 +1,10 @@
 #include <algorithm>
+#include <chrono>
 
 #include "Interpreter/Interpreter.h"
 #include "Tester/Tester.h"
+
+#include <functional>
 
 using std::cout;
 using std::get;
@@ -879,6 +882,164 @@ bool Interpreter::run_set_flag(const SetFlag& flag) {
 	return true;
 }
 
+bool Interpreter::run_compare_time(const CompareTime& compare_time) {
+	auto logger = init_log();
+	logger.log("");
+	logger.log("Running time comparison...");
+	bool success = true;
+
+	// Генерируем данные для тестирования
+	std::map<int, vector<string>> test_data;
+
+	auto is_test_data_complete = [&]() -> bool {
+		for (int regex_length = 1; regex_length <= compare_time.obj_max_size;
+			regex_length += compare_time.obj_size_step) {
+			if (test_data.find(regex_length) == test_data.end() ||
+				(test_data.find(regex_length) != test_data.end() &&
+				test_data[regex_length].size() < compare_time.test_count)) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	logger.log("Generating regex for testing...");
+
+	RegexGenerator rg(compare_time.obj_max_size, 3, 2);
+	while (!is_test_data_complete()) {
+		string regex = rg.generate_regex();
+		int regex_length = regex.length();
+		if (regex_length > compare_time.obj_max_size ||
+			(regex_length - 1) % compare_time.obj_size_step != 0) {
+			continue;
+		}
+		if (test_data.find(regex_length) == test_data.end() ||
+				(test_data.find(regex_length) != test_data.end() &&
+				test_data[regex_length].size() < compare_time.test_count)) {
+			test_data[regex_length].push_back(regex);
+		}
+	}
+
+	//
+	logger.log("Begining testing expressions...");
+
+	LogMode prev_log_mode = log_mode;
+	if (prev_log_mode == LogMode::all)
+		set_log_mode(LogMode::errors);
+
+	tex_logger.disable();
+
+	// Производим тестирование и получаем его результаты
+	std::map<int, vector<long long>> test_expr1_results;
+	std::map<int, vector<long long>> test_expr2_results;
+
+	for (int regex_length = 1; regex_length <= compare_time.obj_max_size; regex_length += compare_time.obj_size_step) {
+		test_expr1_results[regex_length] = {};
+		test_expr2_results[regex_length] = {};
+
+		using clock = std::chrono::high_resolution_clock;
+		std::chrono::time_point<std::chrono::system_clock> start;
+		std::chrono::time_point<std::chrono::system_clock> end;
+		long long elapsed;
+		optional<GeneralObject> evaluated_expr;
+		for (int test_number = 0; test_number < compare_time.test_count; test_number++) {
+			// подстановка равных Regex на место '*'
+			current_random_regex = Regex(test_data[regex_length][test_number]); // хз как еще передавать
+
+			// Вычисление выражения 1
+			start = clock::now();
+			evaluated_expr = eval_expression(compare_time.expr1);
+			end = clock::now();
+			if (!evaluated_expr.has_value()) {
+				logger.throw_error("while running time comparison: invalid expression 1");
+				success = false;
+				break;
+			}
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			test_expr1_results[regex_length].push_back(elapsed);
+
+			// Вычисление выражения 2
+			start = clock::now();
+			evaluated_expr = eval_expression(compare_time.expr2);
+			end = clock::now();
+			if (!evaluated_expr.has_value()) {
+				logger.throw_error("while running time comparison: invalid expression 2");
+				success = false;
+				break;
+			}
+			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			test_expr2_results[regex_length].push_back(elapsed);
+		}
+
+		if (!success) {
+			break;
+		}
+	}
+
+	//
+	tex_logger.enable();
+	set_log_mode(prev_log_mode);
+
+	current_random_regex = nullopt;
+
+	// Производим обработку результатов
+	vector<std::map<int, long long>> processed_results(2);
+	for (const auto& [regex_length, data] : test_expr1_results) {
+		long long sum_elapsed = 0;
+		for (long long elapsed : data) {
+			sum_elapsed += elapsed;
+		}
+		long long average = sum_elapsed / compare_time.test_count;
+		processed_results[0][regex_length] = average;
+	}
+	for (const auto& [regex_length, data] : test_expr2_results) {
+		long long sum_elapsed = 0;
+		for (long long elapsed : data) {
+			sum_elapsed += elapsed;
+		}
+		long long average = sum_elapsed / compare_time.test_count;
+		processed_results[1][regex_length] = average;
+	}
+
+	// Выводим результаты
+	LogTemplate log_template;
+	log_template.load_tex_template("CompareTime");
+	log_template.set_parameter("expr1", compare_time.expr1.to_txt());
+	log_template.set_parameter("expr2", compare_time.expr2.to_txt());
+	log_template.set_parameter("obj_max_size", compare_time.obj_max_size);
+	log_template.set_parameter("test_count", compare_time.test_count);
+	log_template.set_parameter("obj_size_step", compare_time.obj_size_step);
+
+	LogTemplate::Table table;
+	table.columns.emplace_back("Длина строки");
+	table.columns.emplace_back("Время вычисления выражения 1 (сек)");
+	table.columns.emplace_back("Время вычисления выражения 2 (сек)");
+	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
+		int regex_length = 1 + i * compare_time.obj_size_step;
+
+		table.rows.push_back(to_string(i + 1));
+		table.data.push_back(to_string(1 + i * compare_time.obj_size_step));
+		table.data.push_back(to_string((double)processed_results[0][regex_length] / 1000));
+		table.data.push_back(to_string((double)processed_results[1][regex_length] / 1000));
+	}
+	log_template.set_parameter("table", table);
+
+	LogTemplate::Plot plot;
+	plot.x_title = "Длина строки";
+	plot.y_title = "Время выполнения (мс)";
+	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
+		int regex_length = 1 + i * compare_time.obj_size_step;
+
+		plot.data.emplace_back("Expr1", regex_length, processed_results[0][regex_length]);
+		plot.data.emplace_back("Expr2", regex_length, processed_results[1][regex_length]);
+	}
+	log_template.set_parameter("plot", plot);
+
+	tex_logger.add_log(log_template);
+
+	return success;
+}
+
 bool Interpreter::run_operation(const GeneralOperation& op) {
 	bool success = false;
 	if (holds_alternative<Declaration>(op)) {
@@ -891,6 +1052,8 @@ bool Interpreter::run_operation(const GeneralOperation& op) {
 		success = run_set_flag(get<SetFlag>(op));
 	} else if (holds_alternative<Verification>(op)) {
 		success = run_verification(get<Verification>(op));
+	} else if (holds_alternative<CompareTime>(op)) {
+		success = run_compare_time(get<CompareTime>(op));
 	}
 	return success;
 }
@@ -1284,6 +1447,70 @@ optional<Interpreter::Verification> Interpreter::scan_verification(const vector<
 	return verification;
 }
 
+optional<Interpreter::CompareTime> Interpreter::scan_compare_time(const vector<Lexem>& lexems,
+																  int& pos) {
+	auto logger = init_log();
+	int i = pos;
+
+	if (lexems.size() < i + 1 || lexems[i].type != Lexem::name || lexems[i].value != "CompareTime") {
+		return nullopt;
+	}
+	i++;
+
+	CompareTime compare_time;
+	// expr1
+	if (const auto& expr = scan_expression(lexems, i, lexems.size());
+		expr.has_value()) {
+		compare_time.expr1 = *expr;
+	} else {
+		logger.throw_error("Scan CompareTime: wrong type at position 1, expression expected");
+		return nullopt;
+	}
+
+	// expr2
+	if (const auto& expr = scan_expression(lexems, i, lexems.size());
+		expr.has_value()) {
+		compare_time.expr2 = *expr;
+	} else {
+		logger.throw_error("Scan CompareTime: wrong type at position 2, expression expected");
+		return nullopt;
+	}
+
+	// obj_max_size
+	if (lexems[i].type == Lexem::number) {
+		compare_time.obj_max_size = lexems[i].num;
+	} else {
+		logger.throw_error("Scan CompareTime: wrong type at position 3, number expected");
+		return nullopt;
+	}
+	i++;
+
+	// test_count
+	if (lexems.size() > i) {
+		if (lexems[i].type == Lexem::number) {
+			compare_time.test_count = lexems[i].num;
+		} else {
+			logger.throw_error("Scan CompareTime: wrong type at position 4, number expected");
+			return nullopt;
+		}
+	}
+	i++;
+
+	// obj_size_step
+	if (lexems.size() > i) {
+		if (lexems[i].type == Lexem::number) {
+			compare_time.obj_size_step = lexems[i].num;
+		} else {
+			logger.throw_error("Scan CompareTime: wrong type at position 5, number expected");
+			return nullopt;
+		}
+	}
+	i++;
+
+	pos = i;
+	return compare_time;
+}
+
 optional<Interpreter::GeneralOperation> Interpreter::scan_operation(const vector<Lexem>& lexems) {
 
 	auto logger = init_log();
@@ -1301,6 +1528,9 @@ optional<Interpreter::GeneralOperation> Interpreter::scan_operation(const vector
 	}
 	if (auto declaration = scan_declaration(lexems, pos); declaration.has_value()) {
 		return declaration;
+	}
+	if (auto compare_time = scan_compare_time(lexems, pos); compare_time.has_value()) {
+		return compare_time;
 	}
 	if (auto expr = scan_expression(lexems, pos, lexems.size());
 		expr.has_value() && pos == lexems.size()) {

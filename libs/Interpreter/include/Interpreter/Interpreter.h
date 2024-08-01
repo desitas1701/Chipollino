@@ -172,8 +172,25 @@ class Interpreter {
 		{Flag::log_theory, false},
 	};
 
+	// Специальная форма CompareTime
+	struct CompareTime {
+		// Аргументы:
+		// Выражение 1
+		Expression expr1;
+		// Выражение 2
+		Expression expr2;
+		// натуральное число —
+		// максимальная размерность объекта (число состояний у автомата или
+		// длина у алгебраического выражения).
+		int obj_max_size;
+		// натуральное число — число испытаний на объектах каждой размерности.
+		int test_count = 20;
+		// натуральное число — шаг размерности.
+		int obj_size_step = 1;
+	};
+
 	// Общий вид опрерации
-	using GeneralOperation = std::variant<Declaration, Test, Expression, SetFlag, Verification>;
+	using GeneralOperation = std::variant<Declaration, Test, Expression, SetFlag, Verification, CompareTime>;
 
 	//== Парсинг ==============================================================
 
@@ -210,6 +227,8 @@ class Interpreter {
 											  int& pos); // NOLINT(runtime/references)
 	std::optional<SetFlag> scan_flag(const std::vector<Lexem>&,
 									 int& pos); // NOLINT(runtime/references)
+	std::optional<CompareTime> scan_compare_time(const std::vector<Lexem>&,
+								  int& pos);
 	std::optional<GeneralOperation> scan_operation(const std::vector<Lexem>&);
 
 	//== Исполнение комманд ===================================================
@@ -239,6 +258,7 @@ class Interpreter {
 	bool run_test(const Test&);
 	bool run_verification(const Verification&);
 	bool run_set_flag(const SetFlag&);
+	bool run_compare_time(const CompareTime&);
 	bool run_operation(const GeneralOperation&);
 
 	// Сравнение типов ожидаемых и полученных входных данных
