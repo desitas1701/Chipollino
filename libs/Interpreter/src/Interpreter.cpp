@@ -883,12 +883,14 @@ bool Interpreter::run_set_flag(const SetFlag& flag) {
 }
 
 bool Interpreter::run_compare_time(const CompareTime& compare_time) {
+	bool success = true;
+
+	// Создаём логгер и сообщаем о начале выполнения CompareTime
 	auto logger = init_log();
 	logger.log("");
 	logger.log("Running time comparison...");
-	bool success = true;
 
-	// Генерируем данные для тестирования
+	// Генерируем объекты для испытаний
 	std::map<int, vector<string>> test_data;
 
 	auto is_test_data_complete = [&]() -> bool {
@@ -896,14 +898,14 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 			regex_length += compare_time.obj_size_step) {
 			if (test_data.find(regex_length) == test_data.end() ||
 				(test_data.find(regex_length) != test_data.end() &&
-				test_data[regex_length].size() < compare_time.test_count)) {
+				test_data[regex_length].size() < compare_time.tests_number)) {
 				return false;
 			}
 		}
 		return true;
 	};
 
-	logger.log("Generating regex for testing...");
+	logger.log("Generating objects for testing...");
 
 	RegexGenerator rg(compare_time.obj_max_size, 3, 2);
 	while (!is_test_data_complete()) {
@@ -915,38 +917,40 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 		}
 		if (test_data.find(regex_length) == test_data.end() ||
 				(test_data.find(regex_length) != test_data.end() &&
-				test_data[regex_length].size() < compare_time.test_count)) {
+				test_data[regex_length].size() < compare_time.tests_number)) {
 			test_data[regex_length].push_back(regex);
 		}
 	}
 
-	//
-	logger.log("Begining testing expressions...");
+	// Сообщаем о начале испытаний и приостанавливаем логирование
+	logger.log("Testing expressions...");
 
 	LogMode prev_log_mode = log_mode;
-	if (prev_log_mode == LogMode::all)
+	if (prev_log_mode == LogMode::all) {
 		set_log_mode(LogMode::errors);
+	}
 
 	tex_logger.disable();
 
-	// Производим тестирование и получаем его результаты
+	// Проводим испытания и получаем их результаты
 	std::map<int, vector<long long>> test_expr1_results;
 	std::map<int, vector<long long>> test_expr2_results;
+
+	using clock = std::chrono::high_resolution_clock;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start;
+	std::chrono::time_point<std::chrono::high_resolution_clock> end;
+	long long elapsed;
+	optional<GeneralObject> evaluated_expr;
 
 	for (int regex_length = 1; regex_length <= compare_time.obj_max_size; regex_length += compare_time.obj_size_step) {
 		test_expr1_results[regex_length] = {};
 		test_expr2_results[regex_length] = {};
 
-		using clock = std::chrono::high_resolution_clock;
-		std::chrono::time_point<std::chrono::system_clock> start;
-		std::chrono::time_point<std::chrono::system_clock> end;
-		long long elapsed;
-		optional<GeneralObject> evaluated_expr;
-		for (int test_number = 0; test_number < compare_time.test_count; test_number++) {
+		for (int test_number = 0; test_number < compare_time.tests_number; test_number++) {
 			// подстановка равных Regex на место '*'
 			current_random_regex = Regex(test_data[regex_length][test_number]); // хз как еще передавать
 
-			// Вычисление выражения 1
+			// Вычисление Выражения 1
 			start = clock::now();
 			evaluated_expr = eval_expression(compare_time.expr1);
 			end = clock::now();
@@ -958,7 +962,7 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 			test_expr1_results[regex_length].push_back(elapsed);
 
-			// Вычисление выражения 2
+			// Вычисление Выражения 2
 			start = clock::now();
 			evaluated_expr = eval_expression(compare_time.expr2);
 			end = clock::now();
@@ -976,20 +980,21 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 		}
 	}
 
-	//
+	current_random_regex = nullopt;
+
+	// Возобновляем логирование
 	tex_logger.enable();
 	set_log_mode(prev_log_mode);
 
-	current_random_regex = nullopt;
+	// Обрабатываем результаты испытаний
+	vector<std::map<int, long long>> processed_results(3);
 
-	// Производим обработку результатов
-	vector<std::map<int, long long>> processed_results(2);
 	for (const auto& [regex_length, data] : test_expr1_results) {
 		long long sum_elapsed = 0;
 		for (long long elapsed : data) {
 			sum_elapsed += elapsed;
 		}
-		long long average = sum_elapsed / compare_time.test_count;
+		long long average = sum_elapsed / compare_time.tests_number;
 		processed_results[0][regex_length] = average;
 	}
 	for (const auto& [regex_length, data] : test_expr2_results) {
@@ -997,23 +1002,36 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 		for (long long elapsed : data) {
 			sum_elapsed += elapsed;
 		}
-		long long average = sum_elapsed / compare_time.test_count;
+		long long average = sum_elapsed / compare_time.tests_number;
 		processed_results[1][regex_length] = average;
 	}
+	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
+		int regex_length = 1 + i * compare_time.obj_size_step;
 
-	// Выводим результаты
+		int tests_number_expr1_fatser_expr2 = 0;
+		for (int j = 0; j < compare_time.tests_number; j++) {
+			if (test_expr1_results[regex_length][j] < test_expr2_results[regex_length][j]) {
+				tests_number_expr1_fatser_expr2++;
+			}
+		}
+		processed_results[2][regex_length] = tests_number_expr1_fatser_expr2;
+	}
+
+	// Отображаем результаты испытаний
 	LogTemplate log_template;
 	log_template.load_tex_template("CompareTime");
 	log_template.set_parameter("expr1", compare_time.expr1.to_txt());
 	log_template.set_parameter("expr2", compare_time.expr2.to_txt());
 	log_template.set_parameter("obj_max_size", compare_time.obj_max_size);
-	log_template.set_parameter("test_count", compare_time.test_count);
+	log_template.set_parameter("tests_number", compare_time.tests_number);
 	log_template.set_parameter("obj_size_step", compare_time.obj_size_step);
 
 	LogTemplate::Table table;
-	table.columns.emplace_back("Длина строки");
-	table.columns.emplace_back("Время вычисления выражения 1 (сек)");
-	table.columns.emplace_back("Время вычисления выражения 2 (сек)");
+	table.columns.emplace_back("Размер объекта");
+	table.columns.emplace_back("Время вычисления Выражения 1 (сек)");
+	table.columns.emplace_back("Время вычисления Выражения 2 (сек)");
+	table.columns.emplace_back("Процент тестов, на которых Выражение 1 быстрее Выражения 2");
+	table.columns.emplace_back("Процент тестов, на которых Выражение 2 быстрее Выражения 1");
 	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
 		int regex_length = 1 + i * compare_time.obj_size_step;
 
@@ -1021,11 +1039,17 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 		table.data.push_back(to_string(1 + i * compare_time.obj_size_step));
 		table.data.push_back(to_string((double)processed_results[0][regex_length] / 1000));
 		table.data.push_back(to_string((double)processed_results[1][regex_length] / 1000));
+		table.data.push_back(to_string(
+			(int)round((double)processed_results[2][regex_length] / compare_time.tests_number * 100)
+		));
+		table.data.push_back(to_string(
+			(int)round((double)(compare_time.tests_number - processed_results[2][regex_length]) / compare_time.tests_number * 100)
+		));
 	}
 	log_template.set_parameter("table", table);
 
 	LogTemplate::Plot plot;
-	plot.x_title = "Длина строки";
+	plot.x_title = "Размер объекта";
 	plot.y_title = "Время выполнения (мс)";
 	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
 		int regex_length = 1 + i * compare_time.obj_size_step;
@@ -1458,7 +1482,8 @@ optional<Interpreter::CompareTime> Interpreter::scan_compare_time(const vector<L
 	i++;
 
 	CompareTime compare_time;
-	// expr1
+
+	// Считывем expr1
 	if (const auto& expr = scan_expression(lexems, i, lexems.size());
 		expr.has_value()) {
 		compare_time.expr1 = *expr;
@@ -1467,7 +1492,7 @@ optional<Interpreter::CompareTime> Interpreter::scan_compare_time(const vector<L
 		return nullopt;
 	}
 
-	// expr2
+	// Считывем expr2
 	if (const auto& expr = scan_expression(lexems, i, lexems.size());
 		expr.has_value()) {
 		compare_time.expr2 = *expr;
@@ -1476,7 +1501,7 @@ optional<Interpreter::CompareTime> Interpreter::scan_compare_time(const vector<L
 		return nullopt;
 	}
 
-	// obj_max_size
+	// Считывем obj_max_size
 	if (lexems[i].type == Lexem::number) {
 		compare_time.obj_max_size = lexems[i].num;
 	} else {
@@ -1485,10 +1510,10 @@ optional<Interpreter::CompareTime> Interpreter::scan_compare_time(const vector<L
 	}
 	i++;
 
-	// test_count
+	// Считывем tests_number
 	if (lexems.size() > i) {
 		if (lexems[i].type == Lexem::number) {
-			compare_time.test_count = lexems[i].num;
+			compare_time.tests_number = lexems[i].num;
 		} else {
 			logger.throw_error("Scan CompareTime: wrong type at position 4, number expected");
 			return nullopt;
@@ -1496,7 +1521,7 @@ optional<Interpreter::CompareTime> Interpreter::scan_compare_time(const vector<L
 	}
 	i++;
 
-	// obj_size_step
+	// Считывем obj_size_step
 	if (lexems.size() > i) {
 		if (lexems[i].type == Lexem::number) {
 			compare_time.obj_size_step = lexems[i].num;
