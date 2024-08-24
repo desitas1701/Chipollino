@@ -4,6 +4,7 @@
 #include "Interpreter/Interpreter.h"
 #include "Tester/Tester.h"
 
+#include <Objects/Language.h>
 #include <functional>
 
 using std::cout;
@@ -932,6 +933,9 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 
 	tex_logger.disable();
 
+	// Убираем возможность получения данных из кэша
+	Language::disable_retrieving_from_cache();
+
 	// Проводим испытания и получаем их результаты
 	std::map<int, vector<long long>> test_expr1_results;
 	std::map<int, vector<long long>> test_expr2_results;
@@ -981,6 +985,9 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 	}
 
 	current_random_regex = nullopt;
+
+	// Возвращаем возможность получения данных из кэша
+	Language::enable_retrieving_from_cache();
 
 	// Возобновляем логирование
 	tex_logger.enable();
