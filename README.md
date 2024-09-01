@@ -174,6 +174,7 @@ TG.generate_task(3, 5, false, false);
 - `Reverse: NFA -> NFA` — обращение ("переворачивает" автомат)
 - `Complement: DFA -> DFA` — дополнение
 - `RemEps: NFA -> NFA` — удаление ε-правил
+- `RemEpsTransitions: NFA -> NFA` — удаление ε-переходов
 - `MergeBisim: NFA -> NFA` — объединение эквивалентных по бисимуляции состояний
 - `Annote: NFA -> DFA` — навешивает разметку на все буквы в автомате, стоящие на недетерминированных переходах
 - `DeAnnote: NFA -> NFA` — снимает разметку Annote

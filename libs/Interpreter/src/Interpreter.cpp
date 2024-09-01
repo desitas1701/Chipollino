@@ -429,6 +429,9 @@ optional<GeneralObject> Interpreter::apply_function(const Function& function,
 	if (function.name == "RemEps" && function.input[0] == ObjectType::MFA) {
 		res = ObjectMFA(get<ObjectMFA>(arguments[0]).value.remove_eps(&log_template));
 	}
+	if (function.name == "RemEpsTransitions" && function.input[0] == ObjectType::NFA) {
+		res = ObjectNFA(get<ObjectNFA>(arguments[0]).value.remove_eps_additional(&log_template));
+	}
 	if (function.name == "Reverse" && function.input[0] == ObjectType::NFA) {
 		res = ObjectNFA(get<ObjectNFA>(arguments[0]).value.reverse(&log_template));
 	}

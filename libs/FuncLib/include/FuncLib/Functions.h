@@ -32,6 +32,7 @@ inline static const std::vector<Function> functions = {
 	{"Determinize+", {ObjectType::NFA}, ObjectType::DFA},
 	{"RemEps", {ObjectType::NFA}, ObjectType::NFA},
 	{"RemEps", {ObjectType::MFA}, ObjectType::MFA},
+	{"RemEpsTransitions", {ObjectType::NFA}, ObjectType::NFA},
 	{"Linearize", {ObjectType::Regex}, ObjectType::Regex},
 	{"Minimize", {ObjectType::NFA}, ObjectType::DFA},
 	{"Minimize+", {ObjectType::NFA}, ObjectType::DFA},

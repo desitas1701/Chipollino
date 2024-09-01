@@ -47,6 +47,7 @@ N = PGtoNFA P
 N = PrefixGrammar A
 N = PumpLength R
 N = RemEps A
+N = RemEpsTransitions A
 N = RemoveTrap A
 N = Reverse A
 N = States A
