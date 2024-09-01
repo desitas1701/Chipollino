@@ -374,7 +374,6 @@ optional<GeneralObject> Interpreter::apply_function(const Function& function,
 		res = ObjectDFA(get_automaton(arguments[0]).minimize(false, &log_template));
 	}
 	if (function.name == "MinimizeH") {
-		log_template.load_tex_template("MinimizeH");
 		res = ObjectDFA(get<ObjectNFA>(arguments[0]).value.minimize_h(true, &log_template));
 	}
 	if (function.name == "Annote") {
