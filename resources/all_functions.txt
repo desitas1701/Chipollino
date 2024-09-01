@@ -38,6 +38,7 @@ N = Minimal A
 N = Minimize A
 N = Minimize+ A
 N = MinimizeH A
+N = MinimizeH+ A
 N = MyhillNerode A
 N = Normalize R [[{a} {b}]]
 N = OneUnambiguity R
