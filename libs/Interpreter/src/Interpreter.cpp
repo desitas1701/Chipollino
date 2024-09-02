@@ -969,7 +969,7 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 				success = false;
 				break;
 			}
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 			test_expr1_results[regex_length].push_back(elapsed);
 
 			// Вычисление Выражения 2
@@ -981,7 +981,7 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 				success = false;
 				break;
 			}
-			elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+			elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 			test_expr2_results[regex_length].push_back(elapsed);
 		}
 
@@ -1001,6 +1001,7 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 
 	// Обрабатываем результаты испытаний
 	vector<std::map<int, long long>> processed_results(3);
+	long long max_average = 0;
 
 	for (const auto& [regex_length, data] : test_expr1_results) {
 		long long sum_elapsed = 0;
@@ -1009,6 +1010,8 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 		}
 		long long average = sum_elapsed / compare_time.tests_number;
 		processed_results[0][regex_length] = average;
+
+		max_average = std::max(max_average, average);
 	}
 	for (const auto& [regex_length, data] : test_expr2_results) {
 		long long sum_elapsed = 0;
@@ -1017,6 +1020,8 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 		}
 		long long average = sum_elapsed / compare_time.tests_number;
 		processed_results[1][regex_length] = average;
+
+		max_average = std::max(max_average, average);
 	}
 	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
 		int regex_length = 1 + i * compare_time.obj_size_step;
@@ -1041,8 +1046,16 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 
 	LogTemplate::Table table;
 	table.columns.emplace_back("Размер объекта");
-	table.columns.emplace_back("Время вычисления Выражения 1 (сек)");
-	table.columns.emplace_back("Время вычисления Выражения 2 (сек)");
+	if (max_average >= 10 * 1000 * 1000) {
+		table.columns.emplace_back("Время вычисления Выражения 1 (сек)");
+		table.columns.emplace_back("Время вычисления Выражения 2 (сек)");
+	} else if (max_average >= 10 * 1000) {
+		table.columns.emplace_back("Время вычисления Выражения 1 (мс)");
+		table.columns.emplace_back("Время вычисления Выражения 2 (мс)");
+	} else {
+		table.columns.emplace_back("Время вычисления Выражения 1 (мкс)");
+		table.columns.emplace_back("Время вычисления Выражения 2 (мкс)");
+	}
 	table.columns.emplace_back("Процент тестов, на которых Выражение 1 быстрее Выражения 2");
 	table.columns.emplace_back("Процент тестов, на которых Выражение 2 быстрее Выражения 1");
 	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
@@ -1050,8 +1063,16 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 
 		table.rows.push_back(to_string(i + 1));
 		table.data.push_back(to_string(1 + i * compare_time.obj_size_step));
-		table.data.push_back(to_string((double)processed_results[0][regex_length] / 1000));
-		table.data.push_back(to_string((double)processed_results[1][regex_length] / 1000));
+		if (max_average >= 10 * 1000 * 1000) {
+			table.data.push_back(to_string((double)processed_results[0][regex_length] / 1000000));
+			table.data.push_back(to_string((double)processed_results[1][regex_length] / 1000000));
+		} else if (max_average >= 10 * 1000) {
+			table.data.push_back(to_string((double)processed_results[0][regex_length] / 1000));
+			table.data.push_back(to_string((double)processed_results[1][regex_length] / 1000));
+		} else {
+			table.data.push_back(to_string((double)processed_results[0][regex_length]));
+			table.data.push_back(to_string((double)processed_results[1][regex_length]));
+		}
 		table.data.push_back(to_string(
 			(int)round((double)processed_results[2][regex_length] / compare_time.tests_number * 100)
 		));
@@ -1063,12 +1084,26 @@ bool Interpreter::run_compare_time(const CompareTime& compare_time) {
 
 	LogTemplate::Plot plot;
 	plot.x_title = "Размер объекта";
-	plot.y_title = "Время выполнения (мс)";
+	if (max_average >= 10 * 1000 * 1000) {
+		plot.y_title = "Время выполнения (сек)";
+	} else if (max_average >= 10 * 1000) {
+		plot.y_title = "Время выполнения (мс)";
+	} else {
+		plot.y_title = "Время выполнения (мкс)";
+	}
 	for (int i = 0; i <= (compare_time.obj_max_size - 1) / compare_time.obj_size_step; i++) {
 		int regex_length = 1 + i * compare_time.obj_size_step;
 
-		plot.data.emplace_back("Expr1", regex_length, processed_results[0][regex_length]);
-		plot.data.emplace_back("Expr2", regex_length, processed_results[1][regex_length]);
+		if (max_average >= 10 * 1000 * 1000) {
+			plot.data.emplace_back("Expr1", regex_length, (double)processed_results[0][regex_length] / 1000000);
+			plot.data.emplace_back("Expr2", regex_length, (double)processed_results[1][regex_length] / 1000000);
+		} else if (max_average >= 10 * 1000) {
+			plot.data.emplace_back("Expr1", regex_length, (double)processed_results[0][regex_length] / 1000);
+			plot.data.emplace_back("Expr2", regex_length, (double)processed_results[1][regex_length] / 1000);
+		} else {
+			plot.data.emplace_back("Expr1", regex_length, (double)processed_results[0][regex_length]);
+			plot.data.emplace_back("Expr2", regex_length, (double)processed_results[1][regex_length]);
+		}
 	}
 	log_template.set_parameter("plot", plot);
 
