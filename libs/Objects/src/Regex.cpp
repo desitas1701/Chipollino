@@ -264,7 +264,7 @@ vector<FAState> Regex::_to_thompson(const Alphabet& root_alphabet) const {
 		vector<FAState> fa_negative_states = Regex::cast(term_l)->_to_thompson(root_alphabet);
 		// автомат для отрицания, строится обычный томпсон и берется дополнение
 		FiniteAutomaton fa_negative = FiniteAutomaton(0, fa_negative_states, root_alphabet);
-		fa_negative = fa_negative.minimize();
+		fa_negative = fa_negative.minimize_h();
 		// берем дополнение автомата
 		fa_negative = fa_negative.complement();
 
@@ -1171,7 +1171,7 @@ Regex Regex::get_one_unambiguous_regex(iLogTemplate* log) const {
 		log->set_parameter("cachedMINDFA", "Минимальный автомат сохранен в кэше");
 	}
 
-	FiniteAutomaton min_fa = fa.minimize(true);
+	FiniteAutomaton min_fa = fa.minimize_h(true);
 
 	set<FAState::Transitions> final_states_transitions;
 	for (int i = 0; i < min_fa.size(); i++) {

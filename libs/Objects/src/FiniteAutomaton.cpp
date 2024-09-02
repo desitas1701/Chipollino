@@ -893,7 +893,7 @@ FiniteAutomaton FiniteAutomaton::complement(iLogTemplate* log) const {
 			final_states_counter++;
 	}
 	if (!final_states_counter)
-		new_dfa = new_dfa.minimize();
+		new_dfa = new_dfa.minimize_h();
 
 	if (log) {
 		log->set_parameter("oldautomaton", *this);
@@ -1019,7 +1019,7 @@ FiniteAutomaton FiniteAutomaton::remove_trap_states(iLogTemplate* log) const {
 	}
 	/* Если весь автомат состоит из ловушек, то останется лишь одна из них. */
 	if (new_dfa.is_empty()) {
-		new_dfa = minimize();
+		new_dfa = minimize_h();
 	}
 	if (log) {
 		log->set_parameter("oldautomaton", *this, old_meta);
@@ -1198,7 +1198,7 @@ bool FiniteAutomaton::is_one_unambiguous(iLogTemplate* log) const {
 		log->set_parameter("cachedMINDFA", "Минимальный автомат сохранен в кэше");
 	}
 
-	FiniteAutomaton min_fa = minimize(true);
+	FiniteAutomaton min_fa = minimize_h(true);
 
 	set<FAState::Transitions> final_states_transitions;
 	for (int i = 0; i < min_fa.size(); i++) {
@@ -1852,7 +1852,7 @@ bool FiniteAutomaton::equivalent(const FiniteAutomaton& fa1, const FiniteAutomat
 		if ((!fa1.language->is_min_dfa_cached() || !fa2.language->is_min_dfa_cached()) && log) {
 			log->set_parameter("cachedMINDFA", "Минимальные автоматы сохранены в кэше");
 		}
-		result = bisimilar(fa1.minimize(), fa2.minimize());
+		result = bisimilar(fa1.minimize_h(), fa2.minimize_h());
 	}
 	if (log) {
 		log->set_parameter("automaton1", fa1);
@@ -1895,7 +1895,7 @@ Fraction calc_ambiguity(int i, int n, const vector<Fraction>& f1,
 FiniteAutomaton::AmbiguityValue FiniteAutomaton::get_ambiguity_value(
 	int digits_number_limit, std::optional<int>& word_length) const {
 	FiniteAutomaton fa = remove_eps();
-	FiniteAutomaton min_fa = fa.minimize(true);
+	FiniteAutomaton min_fa = fa.minimize_h(true);
 	fa = fa.remove_trap_states();
 
 	int i = 2;
@@ -2079,7 +2079,7 @@ TransformationMonoid FiniteAutomaton::get_syntactic_monoid() const {
 	if (language->is_syntactic_monoid_cached()) {
 		return language->get_syntactic_monoid();
 	}
-	FiniteAutomaton min_dfa = minimize();
+	FiniteAutomaton min_dfa = minimize_h();
 	TransformationMonoid syntactic_monoid(min_dfa);
 	// syntactic_monoid.is_minimal(); ТМ делает это автоматически
 	//  кэширование
@@ -2311,7 +2311,7 @@ bool FiniteAutomaton::is_dfa_minimal(iLogTemplate* log) const {
 			log->set_parameter("cachedMINDFA", "Минимальный автомат сохранен в кэше");
 		}
 	}
-	bool result = states.size() == minimize().size();
+	bool result = states.size() == minimize_h().size();
 
 	if (log) {
 		log->set_parameter("result", result ? "True" : "False");

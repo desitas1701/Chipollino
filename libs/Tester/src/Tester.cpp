@@ -34,13 +34,13 @@ void Tester::test(const ParseDevice& lang, const Regex& regex, int step, iLogTem
 											 .remove_eps()));
 		labels.emplace_back("Small NFA");
 		machines.push_back(make_unique<FiniteAutomaton>(
-			dynamic_cast<FiniteAutomaton*>(machines[2].get())->minimize().remove_trap_states()));
+			dynamic_cast<FiniteAutomaton*>(machines[2].get())->minimize_h().remove_trap_states()));
 		labels.emplace_back("Minimal DFA");
 	} else if (std::holds_alternative<const FiniteAutomaton*>(lang)) {
 		auto value = std::get<const FiniteAutomaton*>(lang);
 		machines.push_back(make_unique<FiniteAutomaton>(*value));
 		labels.emplace_back("Current FA");
-		machines.push_back(make_unique<FiniteAutomaton>(value->minimize().remove_trap_states()));
+		machines.push_back(make_unique<FiniteAutomaton>(value->minimize_h().remove_trap_states()));
 		labels.emplace_back("Minimal DFA");
 	} else if (std::holds_alternative<const BackRefRegex*>(lang)) {
 		auto value = std::get<const BackRefRegex*>(lang);

@@ -272,7 +272,7 @@ void PrefixGrammar::fa_to_prefix_grammar(const FiniteAutomaton& fa, iLogTemplate
 		log->set_parameter("cachedMINDFA", "Минимальный автомат сохранен в кэше");
 	}
 
-	TransformationMonoid a(fa.minimize());
+	TransformationMonoid a(fa.minimize_h());
 	map<vector<Symbol>, vector<vector<Symbol>>> monoid_rules = a.get_rewriting_rules();
 	set<string> m_r;
 	for (auto& item : monoid_rules) {
